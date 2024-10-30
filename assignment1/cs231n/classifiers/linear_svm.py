@@ -38,12 +38,22 @@ def svm_loss_naive(W, X, y, reg):
             if margin > 0:
                 loss += margin
 
+                # Gradient calculation
+                # For incorrect class j
+                dW[:, j] += X[i]
+                # For correct class y[i]
+                dW[:, y[i]] -= X[i]
+
+
     # Right now the loss is a sum over all training examples, but we want it
     # to be an average instead so we divide by num_train.
     loss /= num_train
+    dW /= num_train
 
     # Add regularization to the loss.
     loss += reg * np.sum(W * W)
+    # Add gradient of regularization term
+    dW += 2 * reg * W
 
     #############################################################################
     # TODO:                                                                     #
@@ -55,7 +65,7 @@ def svm_loss_naive(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -78,7 +88,30 @@ def svm_loss_vectorized(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    num_train = X.shape[0]
+    num_classes = W.shape[1]
+    
+    # 1. 计算所有样本的得分矩阵
+    scores = X.dot(W)  # (N, C)
+    
+    # 2. 获取正确类别的得分
+    correct_class_scores = scores[np.arange(num_train), y]  # (N,)
+    
+    # 3. 计算 margins
+    # reshape correct_class_scores 为 (N,1) 以便广播
+    margins = scores - correct_class_scores.reshape(-1, 1) + 1  # (N, C)
+    
+    # 4. 正确类别的 margin 应该是 0
+    margins[np.arange(num_train), y] = 0
+    
+    # 5. 只保留大于 0 的 margin
+    margins = np.maximum(0, margins)
+    
+    # 6. 计算平均损失
+    loss = np.sum(margins) / num_train
+    
+    # 7. 添加正则化项
+    loss += reg * np.sum(W * W)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -93,7 +126,21 @@ def svm_loss_vectorized(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+        # 1. 将 margins 转换为二进制掩码
+    binary_mask = np.zeros_like(margins)
+    binary_mask[margins > 0] = 1
+    
+    # 2. 计算每个样本有多少个类别的 margin > 0
+    row_sum = np.sum(binary_mask, axis=1)
+    
+    # 3. 处理正确类别的梯度
+    binary_mask[np.arange(num_train), y] = -row_sum
+    
+    # 4. 计算最终的梯度
+    dW = X.T.dot(binary_mask)  # (D, C)
+    
+    # 5. 归一化并添加正则化项的梯度
+    dW = dW / num_train + 2 * reg * W
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
