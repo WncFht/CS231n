@@ -55,7 +55,13 @@ class TwoLayerNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        # 初始化第一层权重和偏置
+        self.params['W1'] = weight_scale * np.random.randn(input_dim, hidden_dim)
+        self.params['b1'] = np.zeros(hidden_dim)
+        
+        # 初始化第二层权重和偏置
+        self.params['W2'] = weight_scale * np.random.randn(hidden_dim, num_classes)
+        self.params['b2'] = np.zeros(num_classes)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -88,7 +94,13 @@ class TwoLayerNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        W1, b1 = self.params['W1'], self.params['b1']
+        W2, b2 = self.params['W2'], self.params['b2']
+        
+        # 前向传播
+        a1, cache1 = affine_forward(X, W1, b1)  # 第一个仿射层
+        h1, cache2 = relu_forward(a1)  # ReLU激活
+        scores, cache3 = affine_forward(h1, W2, b2)  # 第二个仿射层
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -111,8 +123,25 @@ class TwoLayerNet(object):
         # of 0.5 to simplify the expression for the gradient.                      #
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-        pass
+        
+        # 计算损失
+        loss, dscores = softmax_loss(scores, y)
+        
+        # 添加L2正则化
+        loss += 0.5 * self.reg * (np.sum(W1 * W1) + np.sum(W2 * W2))
+        
+        # 反向传播
+        grads = {}
+        # 第二层的反向传播
+        dh1, grads['W2'], grads['b2'] = affine_backward(dscores, cache3)
+        # ReLU层的反向传播
+        da1 = relu_backward(dh1, cache2)
+        # 第一层的反向传播
+        dx, grads['W1'], grads['b1'] = affine_backward(da1, cache1)
+        
+        # 添加正则化梯度
+        grads['W2'] += self.reg * W2
+        grads['W1'] += self.reg * W1
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
