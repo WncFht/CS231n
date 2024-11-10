@@ -74,7 +74,16 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        # 获取所有层数的维度
+        layer_dims = [input_dim] + hidden_dims + [num_classes]
+        # 初始化所有层的参数 (这里的层数是上面的layer_dims的长度减1,因此不会下标越界)
+        for i in range(self.num_layers):
+            self.params['W' + str(i + 1)] = np.random.normal(0, weight_scale, size=(layer_dims[i], layer_dims[i + 1]))
+            self.params['b' + str(i + 1)] = np.zeros(layer_dims[i + 1])
+            # 接下来添加batch normalization 层，注意最后一层不需要添加
+            if self.normalization == 'batchnorm' and i < self.num_layers - 1:
+                self.params['gamma' + str(i + 1)] = np.ones(layer_dims[i + 1])
+                self.params['beta' + str(i + 1)] = np.zeros(layer_dims[i + 1])
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -148,7 +157,35 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        # 我们网络的结果是这样的 {affine - [batch/layer norm] - relu - [dropout]} x (L - 1) - affine - softmax
+
+        # 用一个变量保存上一层的输出
+        layer_input = X
+        caches = {}
+        # 对前面 L - 1层进行操作，因为最后一层的操作和前面的不一样
+        for i in range(1, self.num_layers):
+            W = self.params['W' + str(i)]
+            b = self.params['b' + str(i)]
+
+            # 计算affine层的输出
+            affine_out, affine_cache = affine_forward(layer_input, W, b)
+            # 计算relu层的输出
+            relu_out, relu_cache = relu_forward(affine_out)
+
+            # 保存cache
+            caches['affine_cache' + str(i)] = affine_cache
+            caches['relu_cache' + str(i)] = relu_cache
+
+            # 更新layer_input
+            layer_input = relu_out
+
+        # 最后一层的操作
+        W = self.params['W' + str(self.num_layers)]
+        b = self.params['b' + str(self.num_layers)]
+
+        scores, affine_cache = affine_forward(layer_input, W, b)
+        caches['affine_cache' + str(self.num_layers)] = affine_cache
+
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -175,7 +212,36 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+
+        # 计算loss
+        loss, dscores = softmax_loss(scores, y)
+
+        # 先计算最后一层的梯度
+        W = self.params['W' + str(self.num_layers)]
+        affine_cache = caches['affine_cache' + str(self.num_layers)]
+        d_affine_out, dW, db = affine_backward(dscores, affine_cache)
+        grads['W' + str(self.num_layers)] = dW + self.reg * W
+        grads['b' + str(self.num_layers)] = db
+
+        # 计算前面的梯度
+        for i in range(self.num_layers - 1, 0, -1):
+            W = self.params['W' + str(i)]
+            affine_cache = caches['affine_cache' + str(i)]
+            relu_cache = caches['relu_cache' + str(i)]
+
+            # 先计算relu层的梯度
+            d_affine_out = relu_backward(d_relu_out, relu_cache)
+            # 再计算affine层的梯度
+            d_relu_out, dW, db = affine_backward(d_affine_out, affine_cache)
+
+            # 保存梯度
+            grads['W' + str(i)] = dW + self.reg * W
+            grads['b' + str(i)] = db
+         
+        # 加上正则化项
+        for i in range(1, self.num_layers + 1):
+            W = self.params['W' + str(i)]
+            loss += 0.5 * self.reg * np.sum(W * W)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
