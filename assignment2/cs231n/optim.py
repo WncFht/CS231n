@@ -68,9 +68,8 @@ def sgd_momentum(w, dw, config=None):
     # the next_w variable. You should also use and update the velocity v.     #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-    pass
-
+    v = config['momentum'] * v - config['learning_rate'] * dw
+    next_w = w + v
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -106,9 +105,9 @@ def rmsprop(w, dw, config=None):
     # config['cache'].                                                        #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-    pass
-
+    decay_rate = config['decay_rate']
+    config['cache'] = decay_rate * config['cache'] + (1 - decay_rate) * dw**2
+    next_w = w - config['learning_rate'] * dw / (np.sqrt(config['cache']) + 1e-7)
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
@@ -151,9 +150,16 @@ def adam(w, dw, config=None):
     # using it in any calculations.                                           #
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-
-    pass
-
+    w.reshape(dw.shape)
+    keys = ["learning_rate", "beta1", "beta2", "epsilon", "m", "v", "t"]
+    lr, beta1, beta2, eps, m, v, t = (config.get(key) for key in keys)
+    t += 1
+    m = beta1 * m + (1 - beta1) * dw
+    mt = m / (1 - beta1**t)
+    v = beta2 * v + (1 - beta2) * dw**2
+    vt = v / (1 - beta2**t)
+    next_w = w - lr * mt / (np.sqrt(vt) + eps)
+    config['m'], config['v'], config['t'] = m, v, t
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
     #                             END OF YOUR CODE                            #
